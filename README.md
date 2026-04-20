@@ -284,19 +284,30 @@ The dashboard (`dashboard.html`) has 7 tabs:
 
 ## Topology
 
-```
-         s1 (core)
-        /  |  \  \  \
-       s2  s3  s4  s5  s6
-       |   |   |   |
-     h1,h2 h3,h4 h5,h6 h7,h8
+This topology implements a hybrid Ring + Hub architecture using 6 OpenFlow switches and 8 hosts.
 
-Star topology — loop-free
-100 Mbps links · 1-3ms delay
-OpenFlow 1.3 · fail-secure mode
-```
-
+Protocol: OpenFlow 1.3
+Link Speed: 100 Mbps
+Switch Count: 6
+Host Count: 8
+Topology Type: Ring + Hub Hybrid
 ---
+                    h7       h8
+                     |        |
+                     |        |
+                     s5 ------------- s4 ----- h5
+                    /  \            /   |      |
+                   /    \          /    |      h6
+                  /      \        /     |
+                 /        \      /      |
+               s1 -------- s2 ---       s6
+               |           | \          / \
+               |           |  \        /   \
+              h1          h2   s3 ----      \
+               |                 |  \        \
+               |                 |   \        \
+              h2                h3   h4       (Hub Links)
+
 
 ## Acknowledgements
 
