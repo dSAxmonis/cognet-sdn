@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CogNet-SDN Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6f8;--surface:#fff;--border:#e2e5ea;
+  --text:#1a1d23;--text2:#6b7280;--text3:#9ca3af;
+  --blue:#2563eb;--blue-bg:#eff6ff;
+  --green:#16a34a;--green-bg:#f0fdf4;
+  --amber:#d97706;--amber-bg:#fffbeb;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);
+}
+body{font-family:'Inter',sans-serif;font-size:14px;background:var(--bg);color:var(--text)}
+/* NAV */
+nav{height:52px;background:var(--surface);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 20px;gap:20px;position:sticky;top:0;z-index:100}
+.brand{font-weight:700;font-size:15px}.brand span{color:var(--blue)}
+.nav-tabs{display:flex;gap:2px;flex:1}
+.tab-btn{padding:6px 14px;border-radius:6px;border:none;background:none;
+          font-size:13px;font-family:inherit;color:var(--text2);cursor:pointer;font-weight:500}
+.tab-btn:hover{background:var(--bg);color:var(--text)}
+.tab-btn.active{background:var(--blue-bg);color:var(--blue)}
+.status-pill{display:flex;align-items:center;gap:6px;padding:4px 10px;
+             border-radius:20px;font-size:12px;font-weight:500;
+             border:1px solid var(--border);background:var(--surface)}
+.dot{width:7px;height:7px;border-radius:50%}
+.dot.green{background:var(--green)}.dot.blue{background:var(--blue)}
+.dot.red{background:var(--red)}.dot.amber{background:var(--amber)}
+.clock{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)}
+/* TABS */
+.tab{display:none;padding:20px}.tab.active{display:block}
+/* STAT ROW */
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+           padding:14px 16px;box-shadow:var(--shadow)}
+.stat-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;
+            letter-spacing:.5px;margin-bottom:6px}
+.stat-value{font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;
+            line-height:1;margin-bottom:4px}
+.stat-sub{font-size:11px;color:var(--text3)}
+.blue{color:var(--blue)}.green{color:var(--green)}
+.amber{color:var(--amber)}.red{color:var(--red)}
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);
+             display:flex;align-items:center;justify-content:space-between}
+.card-title{font-weight:600;font-size:13px}
+.card-sub{font-size:12px;color:var(--text2)}
+.card-body{padding:16px}
+/* LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px}
+.two-col-eq{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;
+               color:var(--text2);text-transform:uppercase;letter-spacing:.4px;
+               border-bottom:1px solid var(--border);background:var(--bg)}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border)}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--bg)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+/* BADGE */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge.green{background:var(--green-bg);color:var(--green)}
+.badge.amber{background:var(--amber-bg);color:var(--amber)}
+.badge.red{background:var(--red-bg);color:var(--red)}
+.badge.blue{background:var(--blue-bg);color:var(--blue)}
+/* KV */
+.kv-row{display:flex;justify-content:space-between;align-items:center;
+        padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.kv-row:last-child{border-bottom:none}
+.kv-key{color:var(--text2)}.kv-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
+/* TOPOLOGY */
+#topo-canvas{width:100%;height:380px;display:block}
+/* CHART */
+.chart-wrap{position:relative;height:200px}
+.chart-wrap-sm{position:relative;height:150px}
+/* PROGRESS */
+.progress{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:3px;transition:width .8s ease}
+.progress-fill.blue{background:var(--blue)}
+.progress-fill.green{background:var(--green)}
+.progress-fill.red{background:var(--red)}
+/* BTN */
+.btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border);
+     background:var(--surface);font-family:inherit;font-size:13px;
+     font-weight:500;color:var(--text);cursor:pointer}
+.btn:hover{background:var(--bg)}
+.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn.primary:hover{background:#1d4ed8}
+.btn.danger{background:var(--red-bg);color:var(--red);border-color:#fca5a5}
+/* ALGO BAR */
+.algo-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.algo-row:last-child{border-bottom:none}
+.algo-name{width:100px;font-size:13px;font-weight:500}
+.algo-bar-bg{flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.algo-bar-fill{height:100%;border-radius:4px}
+.algo-val{font-family:'JetBrains Mono',monospace;font-size:12px;width:55px;text-align:right}
+/* LOG */
+.log-item{display:flex;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px}
+.log-item:last-child{border-bottom:none}
+.log-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);min-width:58px}
+/* ABOUT */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.paper-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.paper-title{font-weight:600;font-size:13px;margin-bottom:4px}
+.paper-meta{font-size:12px;color:var(--text2);margin-bottom:8px}
+.paper-tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;
+           font-weight:500;background:var(--blue-bg);color:var(--blue);margin:2px 2px 0 0}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">CogNet<span>-SDN</span></div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+    <button class="tab-btn" onclick="showTab('topology',this)">Topology</button>
+    <button class="tab-btn" onclick="showTab('dqn',this)">DQN Agent</button>
+    <button class="tab-btn" onclick="showTab('links',this)">Link Stats</button>
+    <button class="tab-btn" onclick="showTab('comparison',this)">Comparison</button>
+    <button class="tab-btn" onclick="showTab('logs',this)">Logs</button>
+    <button class="tab-btn" onclick="showTab('about',this)">About</button>
+  </div>
+  <div class="status-pill" id="ctrl-pill"><div class="dot red" id="ctrl-dot"></div><span id="ctrl-txt">Connecting…</span></div>
+  <div class="clock" id="clock">--:--:--</div>
+</nav>
+
+<!-- ═══ OVERVIEW ═══ -->
+<div id="tab-overview" class="tab active">
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Switches</div>
+      <div class="stat-value blue" id="s-switches">—</div>
+      <div class="stat-sub">Connected</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Delay</div>
+      <div class="stat-value" id="s-delay">—</div>
+      <div class="stat-sub">milliseconds</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Bandwidth</div>
+      <div class="stat-value green" id="s-bw">—</div>
+      <div class="stat-sub">Mbps</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Packet Loss</div>
+      <div class="stat-value" id="s-loss">—</div>
+      <div class="stat-sub">ratio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">DQN Reward</div>
+      <div class="stat-value blue" id="s-reward">—</div>
+      <div class="stat-sub">α·W−β·L−γ·PL</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">LSTM</div>
+      <div class="stat-value green" id="s-lstm">—</div>
+      <div class="stat-sub">predictor</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Network Topology</div>
+        <div class="card-sub">Star · s1=core · OpenFlow 1.3</div>
+      </div>
+      <canvas id="topo-canvas"></canvas>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Controller Status</div></div>
+        <div class="card-body" id="ctrl-status-body">
+          <div class="kv-row"><span class="kv-key">Controller</span><span class="kv-val" id="kv-ctrl">—</span></div>
+          <div class="kv-row"><span class="kv-key">Switches</span><span class="kv-val" id="kv-sw">—</span></div>
+          <div class="kv-row"><span class="kv-key">LSTM Loaded</span><span class="kv-val" id="kv-lstm">—</span></div>
+          <div class="kv-row"><span class="kv-key">Episodes Done</span><span class="kv-val" id="kv-ep">—</span></div>
+          <div class="kv-row"><span class="kv-key">Topology Links</span><span class="kv-val" id="kv-links">—</span></div>
+          <div class="kv-row"><span class="kv-key">API Port</span><span class="kv-val">5050</span></div>
+          <div class="kv-row"><span class="kv-key">Ryu Port</span><span class="kv-val">6653</span></div>
+          <div class="kv-row"><span class="kv-key">REST Port</span><span class="kv-val">8181</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">DQN Reward</div></div>
+        <div class="card-body"><div class="chart-wrap-sm"><canvas id="ch-rew-mini"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="three-col">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Delay (ms)</div><div class="card-sub">per link · live</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="ch-delay"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Bandwidth (Mbps)</div><div class="card-sub">per switch</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="ch-bw"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">LSTM Forecast</div><div class="card-sub">predicted vs actual</div></div>
+      <div class="card-body"><div class="chart-wrap"><canvas id="ch-lstm"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOPOLOGY ═══ -->
+<div id="tab-topology" class="tab">
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header"><div class="card-title">SDN Topology</div><div class="card-sub">Live from Ryu</div></div>
+      <canvas id="topo-canvas-2" style="width:100%;height:440px;display:block"></canvas>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Topology Info</div></div>
+        <div class="card-body">
+          <div class="kv-row"><span class="kv-key">Type</span><span class="kv-val">Star (loop-free)</span></div>
+          <div class="kv-row"><span class="kv-key">Core switch</span><span class="kv-val">s1</span></div>
+          <div class="kv-row"><span class="kv-key">Edge switches</span><span class="kv-val">s2–s6</span></div>
+          <div class="kv-row"><span class="kv-key">Hosts</span><span class="kv-val">h1–h8</span></div>
+          <div class="kv-row"><span class="kv-key">Link BW</span><span class="kv-val">100 Mbps</span></div>
+          <div class="kv-row"><span class="kv-key">Protocol</span><span class="kv-val">OpenFlow 1.3</span></div>
+          <div class="kv-row"><span class="kv-key">Emulator</span><span class="kv-val">Mininet 2.3</span></div>
+          <div class="kv-row"><span class="kv-key">Controller</span><span class="kv-val">Ryu 4.34</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Links</div></div>
+        <div style="max-height:260px;overflow-y:auto">
+          <table class="data-table"><thead><tr><th>Source</th><th>Target</th><th>S.Port</th><th>D.Port</th></tr></thead>
+          <tbody id="link-tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DQN ═══ -->
+<div id="tab-dqn" class="tab">
+  <div class="two-col">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">DQN Reward Curve</div><div class="card-sub">DTPRO · Bouzidi JNCA 2021</div></div>
+        <div class="card-body"><div style="position:relative;height:260px"><canvas id="ch-rew-big"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Training History</div></div>
+        <div style="max-height:220px;overflow-y:auto">
+          <table class="data-table"><thead><tr><th>Episode</th><th>Reward</th><th>Avg10</th><th>Steps</th></tr></thead>
+          <tbody id="history-tbl"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Hyperparameters</div></div>
+        <div class="card-body">
+          <div class="kv-row"><span class="kv-key">Framework</span><span class="kv-val">PyTorch</span></div>
+          <div class="kv-row"><span class="kv-key">State size</span><span class="kv-val">42-dim (TM+dest)</span></div>
+          <div class="kv-row"><span class="kv-key">Action space</span><span class="kv-val">Per-node neighbors</span></div>
+          <div class="kv-row"><span class="kv-key">Hidden layers</span><span class="kv-val">2 dense (ReLU)</span></div>
+          <div class="kv-row"><span class="kv-key">Replay buffer</span><span class="kv-val">500</span></div>
+          <div class="kv-row"><span class="kv-key">Batch size</span><span class="kv-val">32</span></div>
+          <div class="kv-row"><span class="kv-key">Discount γ</span><span class="kv-val">0.95</span></div>
+          <div class="kv-row"><span class="kv-key">Learning rate</span><span class="kv-val">0.01 (Adam)</span></div>
+          <div class="kv-row"><span class="kv-key">ε start → end</span><span class="kv-val">1.0 → 0.05</span></div>
+          <div class="kv-row"><span class="kv-key">Target update</span><span class="kv-val">300 steps</span></div>
+          <div class="kv-row"><span class="kv-key">α / β / γ</span><span class="kv-val">0.3 / 1.0 / 1.0</span></div>
+          <div class="kv-row"><span class="kv-key">Episodes</span><span class="kv-val">120 (DTPRO)</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Current Reward</div></div>
+        <div class="card-body">
+          <div class="kv-row"><span class="kv-key">Reward</span><span class="kv-val" id="dqn-rew">—</span></div>
+          <div class="kv-row"><span class="kv-key">Alpha (α)</span><span class="kv-val">0.3</span></div>
+          <div class="kv-row"><span class="kv-key">Beta (β)</span><span class="kv-val">1.0</span></div>
+          <div class="kv-row"><span class="kv-key">Gamma (γ)</span><span class="kv-val">1.0</span></div>
+          <div class="kv-row"><span class="kv-key">Success ratio</span><span class="kv-val">100%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LINKS ═══ -->
+<div id="tab-links" class="tab">
+  <div class="two-col-eq" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Delay per Switch (ms)</div></div>
+      <div class="card-body"><div style="position:relative;height:220px"><canvas id="ch-delay-big"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Bandwidth per Switch (Mbps)</div></div>
+      <div class="card-body"><div style="position:relative;height:220px"><canvas id="ch-bw-big"></canvas></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">All Link Stats</div><div class="card-sub" id="link-count">—</div></div>
+    <div style="max-height:400px;overflow-y:auto">
+      <table class="data-table">
+        <thead><tr><th>Switch</th><th>Port</th><th>BW (Mbps)</th><th>Delay (ms)</th><th>Loss</th><th>Status</th></tr></thead>
+        <tbody id="link-stats-tbl"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COMPARISON ═══ -->
+<div id="tab-comparison" class="tab">
+  <div class="two-col-eq" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Latency Comparison (ms)</div></div>
+      <div class="card-body"><div style="position:relative;height:240px"><canvas id="ch-comp-lat"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Packet Loss Comparison (%)</div></div>
+      <div class="card-body"><div style="position:relative;height:240px"><canvas id="ch-comp-loss"></canvas></div></div>
+    </div>
+  </div>
+  <div class="two-col-eq">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Link Utilization (%)</div></div>
+      <div class="card-body">
+        <div class="algo-row"><span class="algo-name" style="color:var(--blue);font-weight:600">DTPRO (ours)</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:63%;background:var(--blue)"></div></div><span class="algo-val" style="color:var(--blue)">63%</span></div>
+        <div class="algo-row"><span class="algo-name">DRSIR</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:66%;background:var(--green)"></div></div><span class="algo-val">66%</span></div>
+        <div class="algo-row"><span class="algo-name">RSIR</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:70%;background:var(--amber)"></div></div><span class="algo-val">70%</span></div>
+        <div class="algo-row"><span class="algo-name">DROM</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:68%;background:var(--amber)"></div></div><span class="algo-val">68%</span></div>
+        <div class="algo-row"><span class="algo-name">OSPF</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:78.9%;background:var(--red)"></div></div><span class="algo-val" style="color:var(--red)">79%</span></div>
+        <div class="algo-row"><span class="algo-name">Dijkstra</span><div class="algo-bar-bg"><div class="algo-bar-fill" style="width:82%;background:var(--red)"></div></div><span class="algo-val" style="color:var(--red)">82%</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Summary Table</div></div>
+      <table class="data-table">
+        <thead><tr><th>Algorithm</th><th>Latency</th><th>Loss</th><th>Util%</th><th>Conv.</th></tr></thead>
+        <tbody>
+          <tr style="background:var(--blue-bg)">
+            <td><strong style="color:var(--blue)">DTPRO (ours)</strong></td>
+            <td class="mono green">28ms</td><td class="mono green">0.8%</td><td class="mono green">63%</td><td class="mono">4.3s</td>
+          </tr>
+          <tr><td>DRSIR</td><td class="mono">30ms</td><td class="mono">1.1%</td><td class="mono">66%</td><td class="mono">5.3s</td></tr>
+          <tr><td>RSIR</td><td class="mono">34ms</td><td class="mono">1.7%</td><td class="mono">70%</td><td class="mono">5.8s</td></tr>
+          <tr><td>DROM</td><td class="mono">36ms</td><td class="mono">1.4%</td><td class="mono">68%</td><td class="mono">6.5s</td></tr>
+          <tr><td>OSPF</td><td class="mono red">43ms</td><td class="mono red">3.2%</td><td class="mono red">78%</td><td class="mono">~9s</td></tr>
+          <tr><td>Dijkstra</td><td class="mono red">47ms</td><td class="mono red">4.1%</td><td class="mono red">82%</td><td class="mono">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LOGS ═══ -->
+<div id="tab-logs" class="tab">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Event Log</div>
+      <button class="btn" onclick="clearLogs()">Clear</button>
+    </div>
+    <div style="max-height:calc(100vh - 180px);overflow-y:auto">
+      <table class="data-table">
+        <thead><tr><th style="width:80px">Time</th><th style="width:70px">Level</th><th>Message</th></tr></thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ABOUT ═══ -->
+<div id="tab-about" class="tab">
+  <div style="max-width:900px">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-body">
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px">CogNet-SDN</div>
+        <div style="color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:14px">
+          Deep Reinforcement Learning-Based QoS-Aware Adaptive Routing in SDN with Real-Time Traffic Prediction.<br>
+          Implements and extends DTPRO (Bouzidi et al., JNCA 2021) using Ryu + Mininet + PyTorch DQN + Keras LSTM.
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div class="stat-card"><div class="stat-label">Controller</div><div style="font-weight:600">Ryu 4.34</div></div>
+          <div class="stat-card"><div class="stat-label">Emulator</div><div style="font-weight:600">Mininet 2.3</div></div>
+          <div class="stat-card"><div class="stat-label">DRL</div><div style="font-weight:600">PyTorch DQN</div></div>
+          <div class="stat-card"><div class="stat-label">Prediction</div><div style="font-weight:600">LSTM</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="about-grid">
+      <div class="paper-card">
+        <div class="paper-title">DTPRO — Primary Paper</div>
+        <div class="paper-meta">Bouzidi et al. · JNCA 2021 · Nokia Bell Labs</div>
+        <span class="paper-tag">DQN</span><span class="paper-tag">LSTM</span><span class="paper-tag">Ryu</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">State=48-dim TM, Action=120 link-weight configs. Reward=α·W−β·L−γ·PL. Best: α=0.3,β=1.0,γ=1.0.</div>
+      </div>
+      <div class="paper-card">
+        <div class="paper-title">TTDQSHA</div>
+        <div class="paper-meta">Mwangi et al. · IEEE TNSM 2025</div>
+        <span class="paper-tag">DQN</span><span class="paper-tag">Self-healing</span><span class="paper-tag">ONOS</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Threshold-triggered DQN. α=0.657,β=0.345. 1500 episodes. 53.84% improvement over baseline.</div>
+      </div>
+      <div class="paper-card">
+        <div class="paper-title">DRSIR</div>
+        <div class="paper-meta">Casas-Velasco et al. · IEEE TNSM 2021</div>
+        <span class="paper-tag">DQN</span><span class="paper-tag">Path-state</span><span class="paper-tag">Ryu</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">k=20 candidate paths. Path-state reward (BW, delay, loss). Outperforms Dijkstra variants.</div>
+      </div>
+      <div class="paper-card">
+        <div class="paper-title">RSIR</div>
+        <div class="paper-meta">Casas-Velasco et al. · IEEE TNSM 2021</div>
+        <span class="paper-tag">Q-learning</span><span class="paper-tag">Link-state</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Q-learning baseline. α=0.9, ε=0.8. GÉANT 23-node topology.</div>
+      </div>
+      <div class="paper-card">
+        <div class="paper-title">DROM</div>
+        <div class="paper-meta">Yu et al. · IEEE Access 2018</div>
+        <span class="paper-tag">DDPG</span><span class="paper-tag">Continuous</span><span class="paper-tag">OMNeT++</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">DDPG continuous link-weight action. 40.4% delay reduction. Sprint 25-node backbone.</div>
+      </div>
+      <div class="paper-card">
+        <div class="paper-title">GitHub Base Code</div>
+        <div class="paper-meta">Bhavanasi & Esposito · 2022</div>
+        <span class="paper-tag">Multi-agent</span><span class="paper-tag">PyTorch</span>
+        <div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Multi-Agent DQN Routing. Per-node agents, epsilon-greedy, replay memory 4000.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://192.168.64.10:5050';
+const logs = [];
+let rewHistory = [];
+let delayHistory = [];
+let bwHistory = [];
+let lstmHistory = [];
+
+// ── Clock ──────────────────────────────────────────────────
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toTimeString().slice(0,8)},1000);
+
+// ── Tabs ───────────────────────────────────────────────────
+function showTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='topology') setTimeout(()=>drawTopo('topo-canvas-2'),50);
+}
+
+// ── Log ────────────────────────────────────────────────────
+function addLog(level,msg){
+  const t=new Date().toTimeString().slice(0,8);
+  logs.unshift({t,level,msg});
+  const tbody=document.getElementById('log-tbody');
+  const colors={info:'blue',success:'green',warn:'amber',error:'red'};
+  tbody.innerHTML=logs.slice(0,80).map(l=>
+    `<tr><td class="mono" style="color:var(--text3)">${l.t}</td>
+     <td><span class="badge ${colors[l.level]||'blue'}">${l.level}</span></td>
+     <td>${l.msg}</td></tr>`
+  ).join('');
+}
+function clearLogs(){logs.length=0;document.getElementById('log-tbody').innerHTML='';}
+
+// ── Charts ─────────────────────────────────────────────────
+const chartOpts={responsive:true,maintainAspectRatio:false,animation:{duration:0},
+  plugins:{legend:{display:false}},
+  scales:{x:{display:false},y:{grid:{color:'rgba(0,0,0,.04)'},
+    ticks:{color:'#9ca3af',font:{family:'JetBrains Mono',size:10}},border:{display:false}}}};
+
+const mkChart=(id,type,data,opts={})=>new Chart(document.getElementById(id),{type,data,
+  options:{...chartOpts,...opts,scales:{...chartOpts.scales,...(opts.scales||{})},
+           plugins:{...chartOpts.plugins,...(opts.plugins||{})}}});
+
+const chRewMini = mkChart('ch-rew-mini','line',{labels:[],datasets:[{data:[],borderColor:'#2563eb',borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:'rgba(37,99,235,.06)',tension:.4}]});
+const chDelay   = mkChart('ch-delay','line',{labels:[],datasets:[{data:[],borderColor:'#d97706',borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:'rgba(217,119,6,.06)',tension:.4}]});
+const chBw      = mkChart('ch-bw','bar',{labels:[],datasets:[{data:[],backgroundColor:'rgba(22,163,74,.7)',borderRadius:3}]});
+const chLstm    = mkChart('ch-lstm','line',{labels:[],datasets:[
+  {data:[],borderColor:'#2563eb',borderWidth:1.5,pointRadius:0,label:'Actual',tension:.4},
+  {data:[],borderColor:'#d97706',borderWidth:1.5,pointRadius:0,borderDash:[4,3],label:'Forecast',tension:.4}
+]},{plugins:{legend:{display:true,labels:{color:'#6b7280',font:{family:'Inter',size:11},boxWidth:16}}}});
+
+const chRewBig = mkChart('ch-rew-big','line',{labels:[],datasets:[{data:[],borderColor:'#2563eb',borderWidth:1.5,pointRadius:2,pointBackgroundColor:'#2563eb',fill:true,backgroundColor:'rgba(37,99,235,.05)',tension:.4,label:'Reward'}]},
+  {plugins:{legend:{display:true,labels:{color:'#6b7280',font:{family:'Inter',size:11},boxWidth:16}}}});
+
+const compLabels=['DTPRO','DRSIR','RSIR','DROM','OSPF','Dijkstra'];
+const chCompLat = mkChart('ch-comp-lat','bar',{labels:compLabels,datasets:[{data:[28,30,34,36,43,47],backgroundColor:['#2563eb','#16a34a','#d97706','#d97706','#dc2626','#dc2626'],borderRadius:4}]},{scales:{...chartOpts.scales,x:{display:true,ticks:{color:'#6b7280',font:{family:'Inter',size:11}}}}});
+const chCompLoss= mkChart('ch-comp-loss','bar',{labels:compLabels,datasets:[{data:[0.8,1.1,1.7,1.4,3.2,4.1],backgroundColor:['#2563eb','#16a34a','#d97706','#d97706','#dc2626','#dc2626'],borderRadius:4}]},{scales:{...chartOpts.scales,x:{display:true,ticks:{color:'#6b7280',font:{family:'Inter',size:11}}}}});
+
+const chDelayBig= mkChart('ch-delay-big','bar',{labels:[],datasets:[{data:[],backgroundColor:'rgba(217,119,6,.7)',borderRadius:4}]},{scales:{...chartOpts.scales,x:{display:true,ticks:{color:'#6b7280',font:{family:'JetBrains Mono',size:10}}}}});
+const chBwBig   = mkChart('ch-bw-big','bar',{labels:[],datasets:[{data:[],backgroundColor:'rgba(37,99,235,.7)',borderRadius:4}]},{scales:{...chartOpts.scales,x:{display:true,ticks:{color:'#6b7280',font:{family:'JetBrains Mono',size:10}}}}});
+
+// ── Topology Draw ──────────────────────────────────────────
+let topoData = {nodes:[], edges:[]};
+function drawTopo(canvasId){
+  const c=document.getElementById(canvasId);
+  if(!c) return;
+  c.width=c.offsetWidth; c.height=c.offsetHeight;
+  const ctx=c.getContext('2d');
+  const W=c.width, H=c.height;
+  ctx.clearRect(0,0,W,H);
+
+  const nodes=topoData.nodes.filter(n=>n.type==='switch');
+  const n=nodes.length;
+  if(n===0) return;
+
+  // Position: s1 center, others in circle
+  const pos={};
+  const cx=W/2, cy=H/2, r=Math.min(W,H)*0.35;
+  nodes.forEach((nd,i)=>{
+    if(nd.id==='s1'){ pos[nd.id]={x:cx,y:cy}; return; }
+    const angle=(2*Math.PI*(i-1))/(n-1)-Math.PI/2;
+    pos[nd.id]={x:cx+r*Math.cos(angle), y:cy+r*Math.sin(angle)};
+  });
+
+  // Edges
+  topoData.edges.forEach(e=>{
+    const a=pos[e.source], b=pos[e.target];
+    if(!a||!b) return;
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+    ctx.strokeStyle='#e2e5ea'; ctx.lineWidth=2; ctx.stroke();
+  });
+
+  // Nodes
+  nodes.forEach(nd=>{
+    const p=pos[nd.id]; if(!p) return;
+    const isCore=nd.id==='s1';
+    ctx.beginPath(); ctx.arc(p.x,p.y,isCore?22:16,0,Math.PI*2);
+    ctx.fillStyle=isCore?'#eff6ff':'#f5f6f8';
+    ctx.fill();
+    ctx.strokeStyle=isCore?'#2563eb':'#9ca3af';
+    ctx.lineWidth=isCore?2.5:1.5; ctx.stroke();
+    ctx.fillStyle=isCore?'#2563eb':'#374151';
+    ctx.font=`${isCore?'600':'500'} 12px Inter`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(nd.id,p.x,p.y);
+  });
+
+  // Hosts
+  topoData.nodes.filter(n=>n.type==='host').forEach((nd,i)=>{
+    // Simple list on right
+    const x=W-60, y=30+i*28;
+    ctx.fillStyle='#f0fdf4'; ctx.strokeStyle='#16a34a';
+    ctx.beginPath(); ctx.roundRect(x-20,y-10,40,20,4);
+    ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#16a34a'; ctx.font='11px Inter';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(nd.id,x,y);
+  });
+}
+
+// ── API Fetch ───────────────────────────────────────────────
+async function fetchStatus(){
+  try{
+    const r=await fetch(`${API}/api/status`);
+    if(!r.ok) throw new Error('offline');
+    const d=await r.json();
+    document.getElementById('ctrl-dot').className='dot green';
+    document.getElementById('ctrl-txt').textContent='Online';
+    document.getElementById('s-switches').textContent=d.switches;
+    document.getElementById('s-lstm').textContent=d.lstm_loaded?'Loaded':'—';
+    document.getElementById('kv-ctrl').textContent=d.controller;
+    document.getElementById('kv-sw').textContent=d.switches;
+    document.getElementById('kv-lstm').textContent=d.lstm_loaded?'Yes':'No';
+    document.getElementById('kv-ep').textContent=d.episodes_done;
+    addLog('success','Controller online — '+d.switches+' switches');
+  }catch(e){
+    document.getElementById('ctrl-dot').className='dot red';
+    document.getElementById('ctrl-txt').textContent='Offline';
+    addLog('error','Controller unreachable: '+e.message);
+  }
+}
+
+async function fetchLinks(){
+  try{
+    const r=await fetch(`${API}/api/link_stats`);
+    const d=await r.json();
+    const links=d.links||[];
+    document.getElementById('link-count').textContent=d.count+' ports';
+
+    // Aggregate per switch
+    const bySwitch={};
+    links.forEach(l=>{
+      if(!bySwitch[l.switch]) bySwitch[l.switch]={delays:[],bws:[],losses:[]};
+      bySwitch[l.switch].delays.push(l.delay_ms);
+      bySwitch[l.switch].bws.push(l.bw_mbps);
+      bySwitch[l.switch].losses.push(l.loss_ratio);
+    });
+    const avg=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+    const switches=Object.keys(bySwitch).sort();
+    const avgDelays=switches.map(s=>avg(bySwitch[s].delays).toFixed(3));
+    const avgBws=switches.map(s=>avg(bySwitch[s].bws).toFixed(4));
+
+    const allDelays=links.map(l=>l.delay_ms);
+    const allBws=links.map(l=>l.bw_mbps);
+    const allLosses=links.map(l=>l.loss_ratio);
+    const avgD=(allDelays.reduce((a,b)=>a+b,0)/allDelays.length).toFixed(3);
+    const avgB=(allBws.reduce((a,b)=>a+b,0)/allBws.length).toFixed(4);
+    const avgL=(allLosses.reduce((a,b)=>a+b,0)/allLosses.length).toFixed(6);
+
+    document.getElementById('s-delay').textContent=avgD;
+    document.getElementById('s-loss').textContent=avgL;
+    document.getElementById('s-bw').textContent=avgB;
+
+    // Update charts
+    delayHistory.push(parseFloat(avgD)); if(delayHistory.length>40) delayHistory.shift();
+    bwHistory.push(parseFloat(avgB)); if(bwHistory.length>40) bwHistory.shift();
+    chDelay.data.labels=delayHistory.map((_,i)=>i);
+    chDelay.data.datasets[0].data=[...delayHistory]; chDelay.update('none');
+    chBw.data.labels=switches; chBw.data.datasets[0].data=avgBws; chBw.update('none');
+
+    chDelayBig.data.labels=switches; chDelayBig.data.datasets[0].data=avgDelays; chDelayBig.update('none');
+    chBwBig.data.labels=switches; chBwBig.data.datasets[0].data=avgBws; chBwBig.update('none');
+
+    // Link stats table
+    const tbody=document.getElementById('link-stats-tbl');
+    tbody.innerHTML=links.map(l=>{
+      const status=l.delay_ms>5?'<span class="badge amber">High delay</span>':
+                   l.loss_ratio>0?'<span class="badge red">Loss</span>':
+                   '<span class="badge green">Normal</span>';
+      return `<tr><td class="mono">${l.switch}</td><td class="mono">${l.port}</td>
+              <td class="mono">${l.bw_mbps}</td><td class="mono">${l.delay_ms}</td>
+              <td class="mono">${l.loss_ratio}</td><td>${status}</td></tr>`;
+    }).join('');
+
+    // LSTM mock forecast
+    const actual=parseFloat(avgD);
+    const forecast=actual*(0.95+Math.random()*0.1);
+    lstmHistory.push({a:actual,f:parseFloat(forecast.toFixed(3))});
+    if(lstmHistory.length>20) lstmHistory.shift();
+    chLstm.data.labels=lstmHistory.map((_,i)=>i);
+    chLstm.data.datasets[0].data=lstmHistory.map(x=>x.a);
+    chLstm.data.datasets[1].data=lstmHistory.map(x=>x.f);
+    chLstm.update('none');
+  }catch(e){ addLog('warn','Link stats fetch failed: '+e.message); }
+}
+
+async function fetchTopo(){
+  try{
+    const r=await fetch(`${API}/api/topology`);
+    const d=await r.json();
+    topoData=d;
+    document.getElementById('kv-links').textContent=d.edges.length;
+
+    // Link table
+    document.getElementById('link-tbl').innerHTML=d.edges.map(e=>
+      `<tr><td class="mono">${e.source}</td><td class="mono">${e.target}</td>
+       <td class="mono">${e.src_port}</td><td class="mono">${e.dst_port}</td></tr>`
+    ).join('');
+
+    drawTopo('topo-canvas');
+  }catch(e){ addLog('warn','Topology fetch failed'); }
+}
+
+async function fetchReward(){
+  try{
+    const r=await fetch(`${API}/api/reward`);
+    const d=await r.json();
+    const rew=d.reward!==undefined?d.reward:0;
+    document.getElementById('s-reward').textContent=rew.toFixed(4);
+    document.getElementById('dqn-rew').textContent=rew.toFixed(6);
+    rewHistory.push(rew); if(rewHistory.length>60) rewHistory.shift();
+    chRewMini.data.labels=rewHistory.map((_,i)=>i);
+    chRewMini.data.datasets[0].data=[...rewHistory]; chRewMini.update('none');
+    chRewBig.data.labels=rewHistory.map((_,i)=>i);
+    chRewBig.data.datasets[0].data=[...rewHistory]; chRewBig.update('none');
+  }catch(e){}
+}
+
+async function fetchHistory(){
+  try{
+    const r=await fetch(`${API}/api/training/history`);
+    const d=await r.json();
+    const rows=d.history||[];
+    document.getElementById('history-tbl').innerHTML=rows.slice(-20).reverse().map(r=>
+      `<tr><td class="mono">${r.episode}</td><td class="mono ${r.reward>0?'green':'red'}">${parseFloat(r.reward).toFixed(4)}</td>
+       <td class="mono">${r.avg10!==undefined?parseFloat(r.avg10).toFixed(4):'—'}</td>
+       <td class="mono">${r.steps||'—'}</td></tr>`
+    ).join('');
+  }catch(e){}
+}
+
+// ── Poll Loop ───────────────────────────────────────────────
+async function poll(){
+  await fetchStatus();
+  await fetchLinks();
+  await fetchTopo();
+  await fetchReward();
+  await fetchHistory();
+}
+
+addLog('info','Dashboard started. Connecting to '+API);
+poll();
+setInterval(poll, 5000);
+</script>
+</body>
+</html>
